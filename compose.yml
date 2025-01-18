@@ -354,6 +354,8 @@ services:
       traefik.http.routers.plantuml.tls: true
       traefik.http.routers.plantuml.entrypoints: plantuml
       traefik.http.routers.plantuml.service: plantuml
+    networks:
+      - private
 
   lldap:
     image: lldap/lldap:stable
