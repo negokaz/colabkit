@@ -9,7 +9,7 @@ Colabkit（コラボキット）はチームでソフトウェアを効率よく
 - [Mattermost](https://{{HOST_IP}}:{{GITLAB_MATTERMOST_PORT}}/)
     - チャットサービス
 - [Growi](https://{{HOST_IP}}:{{GROWI_PORT}}/)
-    - 共同編集可能なドキュメント管理サービス
+    - 共同編集可能なナレッジ共有サービス
 
 ## 管理者向けサービス
 
