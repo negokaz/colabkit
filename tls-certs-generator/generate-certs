@@ -1,0 +1,150 @@
+#!/bin/bash -e
+
+
+export RCA_KEY=${RCA_KEY-"ca-key.pem"}
+export RCA_CERT=${RCA_CERT-"ca-cert.pem"}
+export RCA_CSR=${RCA_CSR-"ca.csr"}
+export RCA_SUBJECT=${RCA_SUBJECT:-"dev-ca"}
+export RCA_EXPIRE=${RCA_EXPIRE:-"60"}
+
+export ICA_KEY=${ICA_KEY-"ica-key.pem"}
+export ICA_CERT=${ICA_CERT-"ica-cert.pem"}
+export ICA_CSR=${ICA_CSR-"ica.csr"}
+export ICA_SUBJECT=${ICA_SUBJECT:-"dev-ica"}
+export ICA_EXPIRE=${ICA_EXPIRE:-"60"}
+
+export TLS_CONFIG=${TLS_CONFIG:-"openssl.cnf"}
+export TLS_KEY=${TLS_KEY:-"key.pem"}
+export TLS_CSR=${TLS_CSR:-"key.csr"}
+export TLS_CERT=${TLS_CERT:-"cert.pem"}
+export TLS_SIZE=${TLS_SIZE:-"2048"}
+export TLS_EXPIRE=${TLS_EXPIRE:-"60"}
+export TLS_CERT_RENEWAL_INTERVAL_DAYS=${TLS_CERT_RENEWAL_INTERVAL_DAYS:-"1"}
+export TLS_CHAIN_CERT=${TLS_CHAIN_CERT:-"chain.pem"}
+
+export TLS_SUBJECT=${TLS_SUBJECT:-"example.com"}
+export TLS_DNS=${TLS_DNS}
+export TLS_IP=${TLS_IP}
+
+export DEBUG=${DEBUG:-0}
+
+function main {
+    echo '────────────────────────────────────────────────────────────'
+    echo ' TLS Cert Generator                                         '
+    echo '────────────────────────────────────────────────────────────'
+    echo
+    while true
+    do
+        generate_certs
+        echo "Next renewal certificate at: $(date -d "+${TLS_CERT_RENEWAL_INTERVAL_DAYS} days")"
+        sleep "${TLS_CERT_RENEWAL_INTERVAL_DAYS}d"
+    done
+}
+
+function generate_certs {
+    echo '── Setup ─────'
+    echo "> Generating Config File ${TLS_CONFIG}"
+    generate_config_file > ${TLS_CONFIG}
+    echo '── Root Certificate Authority ─────'
+    if [[ -e ./${RCA_KEY} ]]; then
+        echo "> Using existing Root CA Key ${RCA_KEY}"
+    else
+        echo "> Generating new Root CA key ${RCA_KEY}"
+        openssl genrsa -out ${RCA_KEY} 2048
+    fi
+    if [[ -e ./${RCA_CERT} ]]; then
+        echo "> Using existing Root CA Certificate ${RCA_CERT}"
+    else
+        echo "> Generating new Root CA Certificate ${RCA_CERT}"
+        openssl req -x509 -new -nodes -key ${RCA_KEY} -days ${RCA_EXPIRE} -out ${RCA_CERT} -subj "/CN=${RCA_SUBJECT}"
+
+    fi
+    if [[ "${DEBUG}" = '1' ]]; then
+        echo
+        echo "**** Root CA CERT"
+        cat $RCA_CERT
+    fi
+    echo
+    echo '─── Intermediate Certificate Authority ───'
+    if [[ -e ./${ICA_KEY} ]]; then
+        echo "> Using existing ICA Key ${ICA_KEY}"
+    else
+        echo "> Generating new ICA key ${ICA_KEY}"
+        openssl genrsa -out ${ICA_KEY} 2048
+    fi
+    if [[ -e ./${ICA_CERT} ]]; then
+        echo "> Using existing ICA Certificate ${ICA_CERT}"
+    else
+        echo "> Generating new ICA Certificate ${ICA_CERT}"
+        openssl req -new -key ${ICA_KEY} -config ${TLS_CONFIG} -out ${ICA_CSR} -subj "/CN=${ICA_SUBJECT}"
+        openssl x509 -req -in ${ICA_CSR} -out ${ICA_CERT} -CA ${RCA_CERT} -CAkey ${RCA_KEY} -CAcreateserial \
+            -days ${ICA_EXPIRE} -extensions v3_ca -extfile ${TLS_CONFIG}
+    fi
+    if [[ "${DEBUG}" = '1' ]]; then
+        echo
+        echo "**** ICA CERT"
+        cat $ICA_CERT
+    fi
+    echo
+    echo '─── Self-signed Certificate ───'
+    echo "> Generating new TLS KEY ${TLS_KEY}"
+    openssl genrsa -out ${TLS_KEY} ${TLS_SIZE}
+    echo "> Generating new TLS CSR ${TLS_CSR}"
+    openssl req -new -key ${TLS_KEY} -config ${TLS_CONFIG} -out ${TLS_CSR} -subj "/CN=${TLS_SUBJECT}"
+    echo "> Generating new TLS CERT ${TLS_CERT}"
+    openssl x509 -req -in ${TLS_CSR} -CA ${ICA_CERT} -CAkey ${ICA_KEY} -CAcreateserial \
+        -days ${TLS_EXPIRE} -extensions v3_req -extfile ${TLS_CONFIG} \
+        -out ${TLS_CERT}
+    if [[ "${DEBUG}" = '1' ]]; then
+        echo
+        echo "**** TLS CERT"
+        cat $TLS_CERT
+    fi
+    echo "> Verify new TLS CERT ${TLS_CERT}"
+    openssl verify -show_chain -CAfile ${RCA_CERT} -untrusted ${ICA_CERT} ${TLS_CERT}
+    echo "> Create TLS CERT chain ${TLS_CHAIN_CERT}"
+    cat ${TLS_CERT} ${ICA_CERT} ${RCA_CERT} > ${TLS_CHAIN_CERT}
+    openssl crl2pkcs7 -nocrl -certfile ${TLS_CHAIN_CERT} \
+        | openssl pkcs7 -print_certs -text -noout
+}
+
+function generate_config_file {
+    cat <<__EOF__
+[v3_ca]
+basicConstraints = CA:TRUE
+keyUsage = keyCertSign, cRLSign
+
+[req]
+req_extensions = v3_req
+distinguished_name = req_dn
+
+[req_dn]
+
+[v3_req]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth, serverAuth
+__EOF__
+    if [[ -n ${TLS_DNS} || -n ${TLS_IP} ]]; then
+        cat <<__EOF__
+subjectAltName = @SAN
+
+[SAN]
+__EOF__
+        IFS=","
+        dns=(${TLS_DNS})
+        dns+=(${TLS_SUBJECT})
+        for i in "${!dns[@]}"; do
+            echo DNS.$((i+1)) = ${dns[$i]}
+        done
+
+        if [[ -n ${TLS_IP} ]]; then
+            ip=(${TLS_IP})
+            for i in "${!ip[@]}"; do
+                echo IP.$((i+1)) = ${ip[$i]}
+            done
+        fi
+    fi
+}
+
+main

@@ -1,0 +1,3 @@
+ARG GROWI_VERSION
+
+FROM weseek/growi:${GROWI_VERSION}

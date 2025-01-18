@@ -1,0 +1,393 @@
+name: 'colabkit'
+
+services:
+  traefik:
+    image: colabkit.localhost/traefik:latest
+    build:
+      context: .
+      dockerfile: traefik/Dockerfile
+      args:
+        TRAEFIK_VERSION: v3.1
+    command:
+      - --log.level=INFO
+      - --api.insecure=false
+      - --api.dashboard=true
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.defaultRule=Host(`${HOST_IP}`)
+      - --entrypoints.portal-http.address=:${PORTAL_HTTP_PORT}
+      - --entrypoints.portal-https.address=:${PORTAL_HTTPS_PORT}
+      - --entrypoints.gitlab.address=:${GITLAB_PORT}
+      - --entrypoints.gitlab-mattermost.address=:${GITLAB_MATTERMOST_PORT}
+      - --entrypoints.gitlab-pages.address=:${GITLAB_PAGES_PORT}
+      - --entrypoints.gitlab-ssh.address=:${GITLAB_SSH_PORT}
+      - --entrypoints.gitlab-registry.address=:${GITLAB_REGISTRY_PORT}
+      - --entrypoints.growi.address=:${GROWI_PORT}
+      - --entrypoints.plantuml.address=:${PLANTUML_PORT}
+      - --entrypoints.lldap.address=:${LLDAP_WEB_PORT}
+      - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT}
+    labels:
+      traefik.enable: true
+      traefik.http.routers.traefik-dashboard.service: api@internal
+      traefik.http.routers.traefik-dashboard.entrypoints: traefik-dashboard
+      traefik.http.routers.traefik-dashboard.tls: true
+    depends_on:
+      - tls-certs-generator
+    ports:
+      - ${HOST_IP}:${PORTAL_HTTP_PORT}:${PORTAL_HTTP_PORT}
+      - ${HOST_IP}:${PORTAL_HTTPS_PORT}:${PORTAL_HTTPS_PORT}
+      - ${HOST_IP}:${GITLAB_PORT}:${GITLAB_PORT}
+      - ${HOST_IP}:${GITLAB_MATTERMOST_PORT}:${GITLAB_MATTERMOST_PORT}
+      - ${HOST_IP}:${GITLAB_PAGES_PORT}:${GITLAB_PAGES_PORT}
+      - ${HOST_IP}:${GITLAB_SSH_PORT}:${GITLAB_SSH_PORT}
+      - ${HOST_IP}:${GITLAB_REGISTRY_PORT}:${GITLAB_REGISTRY_PORT}
+      - ${HOST_IP}:${GROWI_PORT}:${GROWI_PORT}
+      - ${HOST_IP}:${PLANTUML_PORT}:${PLANTUML_PORT}
+      - ${HOST_IP}:${LLDAP_WEB_PORT}:${LLDAP_WEB_PORT}
+      - ${HOST_IP}:${TRAEFIK_DASHBOARD_PORT}:${TRAEFIK_DASHBOARD_PORT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - 'tls-certs:/tls-certs'
+    networks:
+      - public
+      - private
+
+  tls-certs-generator:
+    image: colabkit.localhost/tls-certs-generator:latest
+    build:
+      context: .
+      dockerfile: tls-certs-generator/Dockerfile
+    environment:
+      RCA_SUBJECT: colabkit-rca
+      RCA_EXPIRE: 39500
+      RCA_CERT: colabkit-rca.crt
+      RCA_KEY: colabkit-rca.key
+      ICA_SUBJECT: colabkit-ica
+      ICA_EXPIRE: 39500
+      ICA_CERT: colabkit-ica.crt
+      ICA_KEY: colabkit-ica.key
+      # TLS Cert expiry
+      TLS_EXPIRE: 60
+      TLS_CERT_RENEWAL_INTERVAL_DAYS: 1
+      TLS_SUBJECT: ${HOST_IP}
+      TLS_CERT: server-tls.crt
+      TLS_KEY: server-tls.key
+      TLS_CHAIN_CERT: chain-tls.crt
+      # comma seperate list of alternative hostname
+      TLS_DNS: 
+      #  comma seperate list of alternative IPs
+      TLS_IP: ${HOST_IP}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "test -f $${TLS_CHAIN_CERT}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - 'tls-certs:/certs'
+
+  squid:
+    image: colabkit.localhost/squid:latest
+    build:
+      context: .
+      dockerfile: squid/Dockerfile
+    tty: true
+    restart: always
+    networks:
+      - public
+      - private
+    environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+
+  portal:
+    image: colabkit.localhost/portal:latest
+    build:
+      context: .
+      dockerfile: portal/Dockerfile
+      args:
+        HOST_IP: ${HOST_IP}
+        PORTAL_HTTP_PORT: ${PORTAL_HTTP_PORT}
+        PORTAL_HTTPS_PORT: ${PORTAL_HTTPS_PORT}
+        GITLAB_PORT: ${GITLAB_PORT}
+        GITLAB_MATTERMOST_PORT: ${GITLAB_MATTERMOST_PORT}
+        GITLAB_PAGES_PORT: ${GITLAB_PAGES_PORT}
+        GITLAB_REGISTRY_PORT: ${GITLAB_REGISTRY_PORT}
+        GROWI_PORT: ${GROWI_PORT}
+        PLANTUML_PORT: ${PLANTUML_PORT}
+        LLDAP_WEB_PORT: ${LLDAP_WEB_PORT}
+        TRAEFIK_DASHBOARD_PORT: ${TRAEFIK_DASHBOARD_PORT}
+    labels:
+      traefik.enable: true
+      traefik.http.services.portal-http.loadbalancer.server.port: 80
+      traefik.http.routers.portal-http.tls: false
+      traefik.http.routers.portal-http.entrypoints: portal-http
+      traefik.http.routers.portal-http.service: portal-http
+      traefik.http.services.portal-https.loadbalancer.server.port: 80
+      traefik.http.routers.portal-https.tls: true
+      traefik.http.routers.portal-https.entrypoints: portal-https
+      traefik.http.routers.portal-https.service: portal-https
+    depends_on:
+      - tls-certs-generator
+    volumes:
+      - 'tls-certs:/tls-certs'
+    networks:
+      - private
+
+  gitlab:
+    image: colabkit.localhost/gitlab:latest
+    build:
+      context: .
+      dockerfile: gitlab/Dockerfile
+      args:
+        GITLAB_VERSION: 17.6.1-ce.0
+    restart: always
+    environment:
+      HTTP_PROXY: http://squid:3128
+      http_proxy: http://squid:3128
+      HTTPS_PROXY: http://squid:3128
+      https_proxy: http://squid:3128
+      NO_PROXY: localhost
+      no_proxy: localhost
+      GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
+      LDAP_BIND_USER_PASSWORD: ${LDAP_BIND_USER_PASSWORD}
+      GITLAB_OMNIBUS_CONFIG: |
+        # https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/files/gitlab-config-template/gitlab.rb.template
+
+        # GitLab
+        external_url 'https://${HOST_IP}:${GITLAB_PORT}'
+        nginx['listen_port'] = 8929
+        nginx['listen_https'] = false
+        gitlab_rails['gitlab_shell_ssh_port'] = ${GITLAB_SSH_PORT}
+
+        # GitLab Pages
+        pages_external_url 'https://${HOST_IP}:${GITLAB_PAGES_PORT}'
+        pages_nginx['listen_port'] = 8930
+        pages_nginx['listen_https'] = false
+        gitlab_pages['enable'] = true
+        gitlab_pages["namespace_in_path"] = true
+        gitlab_pages['dir'] = '/var/opt/gitlab/gitlab-pages'
+        gitlab_pages['log_directory'] = '/var/log/gitlab/gitlab-pages'
+        gitlab_pages['access_control'] = true
+        gitlab_pages['artifacts_server'] = true
+        gitlab_pages['internal_gitlab_server'] = 'http://gitlab:8929'
+
+        # GitLab Container Registry
+        registry_external_url 'https://${HOST_IP}:${GITLAB_REGISTRY_PORT}'
+        registry_nginx['listen_port'] = 5050
+        registry_nginx['listen_https'] = false
+
+        # GitLab Mattermost
+        mattermost_external_url 'https://${HOST_IP}:${GITLAB_MATTERMOST_PORT}'
+        mattermost_nginx['listen_port'] = 3333
+        mattermost_nginx['listen_https'] = false
+        mattermost['env'] = {
+          # Allow only GitLab users to sign in
+          'MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL' => 'false',
+          'MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL' => 'false',
+          'MM_EMAILSETTINGS_ENABLESIGNINWITHUSERNAME' => 'false',
+          # Allow to access http proxy server
+          'MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS' => 'squid',
+          'HTTP_PROXY' => ENV['HTTP_PROXY'],
+          'http_proxy' => ENV['http_proxy'],
+          'HTTPS_PROXY' => ENV['HTTPS_PROXY'],
+          'https_proxy' => ENV['https_proxy'],
+          'NO_PROXY' => ENV['NO_PROXY'],
+          'no_proxy' => ENV['no_proxy']
+        }
+        
+        # LDAP Authorization
+        gitlab_rails['ldap_enabled'] = true
+        gitlab_rails['ldap_servers'] = {
+          'main' => {
+            'label' => 'LDAP',
+            'host' =>  'lldap',
+            'port' => 3890,
+            'encryption' => 'plain',
+            'active_directory' => false,
+            'timeout' => 10,
+            'uid' => 'uid',
+            'base' => 'ou=people,dc=example,dc=com',
+            'bind_dn' => 'uid=bind_user,ou=people,dc=example,dc=com',
+            'password' => ENV['LDAP_BIND_USER_PASSWORD'],
+            'attributes' => {
+              'username' => 'uid',
+              'email' => 'mail',
+              'name' => 'displayName',
+              'first_name' => 'givenName',
+              'last_name' => 'sn'
+            },
+            'lowercase_usernames' => 'false',
+            'allow_username_or_email_login' => false,
+            'block_auto_created_users' => false
+          }
+        }
+    labels:
+      traefik.enable: true
+      traefik.http.services.gitlab.loadbalancer.server.port: 8929
+      traefik.http.routers.gitlab.tls: true
+      traefik.http.routers.gitlab.entrypoints: gitlab
+      traefik.http.routers.gitlab.service: gitlab
+      traefik.http.services.gitlab-pages.loadbalancer.server.port: 8930
+      traefik.http.routers.gitlab-pages.tls: true
+      traefik.http.routers.gitlab-pages.entrypoints: gitlab-pages
+      traefik.http.routers.gitlab-pages.service: gitlab-pages
+      traefik.tcp.services.gitlab-ssh.loadbalancer.server.port: 22
+      traefik.tcp.routers.gitlab-ssh.rule: HostSNI(`*`)
+      traefik.tcp.routers.gitlab-ssh.entrypoints: gitlab-ssh
+      traefik.tcp.routers.gitlab-ssh.service: gitlab-ssh
+      traefik.http.services.gitlab-registry.loadbalancer.server.port: 5050
+      traefik.http.routers.gitlab-registry.tls: true
+      traefik.http.routers.gitlab-registry.entrypoints: gitlab-registry
+      traefik.http.routers.gitlab-registry.service: gitlab-registry
+      traefik.http.services.gitlab-mattermost.loadbalancer.server.port: 3333
+      traefik.http.routers.gitlab-mattermost.tls: true
+      traefik.http.routers.gitlab-mattermost.entrypoints: gitlab-mattermost
+      traefik.http.routers.gitlab-mattermost.service: gitlab-mattermost
+    volumes:
+      - 'gitlab-config:/etc/gitlab'
+      - 'gitlab-logs:/var/log/gitlab'
+      - 'gitlab-data:/var/opt/gitlab'
+    networks:
+      - private
+    shm_size: '256m'
+
+  gitlab-runner:
+    image: colabkit.localhost/gitlab-runner:latest
+    build:
+      context: .
+      dockerfile: gitlab-runner/Dockerfile
+    restart: always
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - 'gitlab-runner-config:/etc/gitlab-runner'
+      - 'tls-certs:/tls-certs'
+    networks:
+      - private
+
+  growi:
+    image: colabkit.localhost/growi:latest
+    build:
+      context: .
+      dockerfile: growi/Dockerfile
+      args:
+        GROWI_VERSION: 7
+    depends_on:
+      growi-mongodb:
+        condition: service_healthy
+      growi-elasticsearch:
+        condition: service_healthy
+    environment:
+      HTTP_PROXY: http://squid:3128
+      http_proxy: http://squid:3128
+      HTTPS_PROXY: http://squid:3128
+      https_proxy: http://squid:3128
+      NO_PROXY: localhost
+      no_proxy: localhost
+      APP_SITE_URL: https://${HOST_IP}:${GROWI_PORT}
+      MONGO_URI: mongodb://growi-mongodb:27017/growi
+      ELASTICSEARCH_URI: http://growi-elasticsearch:9200/growi
+      PASSWORD_SEED: changeme
+      FILE_UPLOAD: mongodb
+      MATHJAX: 1
+      FORCE_WIKI_MODE: public
+      PLANTUML_URI: https://${HOST_IP}:${PLANTUML_PORT}
+    labels:
+      traefik.enable: true
+      traefik.http.services.growi.loadbalancer.server.port: 3000
+      traefik.http.routers.growi.tls: true
+      traefik.http.routers.growi.entrypoints: growi
+      traefik.http.routers.growi.service: growi
+    restart: unless-stopped
+    volumes:
+      - growi-data:/data
+    networks:
+      - private
+
+  growi-mongodb:
+    image: mongo:6.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/127.0.0.1/27017"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - growi-mongo-configdb:/data/configdb
+      - growi-mongo-db:/data/db
+    networks:
+      - private
+
+  growi-elasticsearch:
+    image: colabkit.localhost/elasticsearch:latest
+    build:
+      context: .
+      dockerfile: growi-elasticsearch/Dockerfile
+      args:
+        ELASTICSEARCH_VERSION: 8.7.0
+    environment:
+      bootstrap.memory_lock: true
+      ES_JAVA_OPTS: -Xms256m -Xmx256m   # increase amount if you have enough memory
+      LOG4J_FORMAT_MSG_NO_LOOKUPS: true # CVE-2021-44228 mitigation for Elasticsearch <= 6.8.20/7.16.0
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/127.0.0.1/9200"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - growi-es-data:/usr/share/elasticsearch/data
+    networks:
+      - private
+
+  plantuml:
+    image: plantuml/plantuml-server:jetty
+    labels:
+      traefik.enable: true
+      traefik.http.services.plantuml.loadbalancer.server.port: 8080
+      traefik.http.routers.plantuml.tls: true
+      traefik.http.routers.plantuml.entrypoints: plantuml
+      traefik.http.routers.plantuml.service: plantuml
+
+  lldap:
+    image: lldap/lldap:stable
+    labels:
+      traefik.enable: true
+      traefik.http.services.lldap.loadbalancer.server.port: 17170
+      traefik.http.routers.lldap.tls: true
+      traefik.http.routers.lldap.entrypoints: lldap
+      traefik.http.routers.lldap.service: lldap
+    volumes:
+      - lldap-data:/data
+    networks:
+      - private
+    environment:
+      LLDAP_LDAP_USER_PASS: ${LDAP_ADMIN_PASSWORD}
+      LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
+      LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
+      LLDAP_LDAP_BASE_DN: dc=example,dc=com
+
+volumes:
+  tls-certs:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  gitlab-runner-config:
+  growi-data:
+  growi-mongo-configdb:
+  growi-mongo-db:
+  growi-es-data:
+  lldap-data:
+
+networks:
+  public:
+    name: colabkit_public
+  private:
+    name: colabkit_private
+    internal: true
