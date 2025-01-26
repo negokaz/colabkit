@@ -30,9 +30,9 @@ services:
       - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT}
     labels:
       traefik.enable: true
-      traefik.http.routers.traefik-dashboard.service: api@internal
-      traefik.http.routers.traefik-dashboard.entrypoints: traefik-dashboard
       traefik.http.routers.traefik-dashboard.tls: true
+      traefik.http.routers.traefik-dashboard.entrypoints: traefik-dashboard
+      traefik.http.routers.traefik-dashboard.service: api@internal
     depends_on:
       - tls-certs-generator
     ports:
@@ -122,14 +122,14 @@ services:
         TRAEFIK_DASHBOARD_PORT: ${TRAEFIK_DASHBOARD_PORT}
     labels:
       traefik.enable: true
-      traefik.http.services.portal-http.loadbalancer.server.port: 80
       traefik.http.routers.portal-http.tls: false
       traefik.http.routers.portal-http.entrypoints: portal-http
       traefik.http.routers.portal-http.service: portal-http
-      traefik.http.services.portal-https.loadbalancer.server.port: 80
+      traefik.http.services.portal-http.loadbalancer.server.port: 80
       traefik.http.routers.portal-https.tls: true
       traefik.http.routers.portal-https.entrypoints: portal-https
       traefik.http.routers.portal-https.service: portal-https
+      traefik.http.services.portal-https.loadbalancer.server.port: 80
     depends_on:
       - tls-certs-generator
     volumes:
@@ -227,26 +227,26 @@ services:
         }
     labels:
       traefik.enable: true
-      traefik.http.services.gitlab.loadbalancer.server.port: 8929
       traefik.http.routers.gitlab.tls: true
       traefik.http.routers.gitlab.entrypoints: gitlab
       traefik.http.routers.gitlab.service: gitlab
-      traefik.http.services.gitlab-pages.loadbalancer.server.port: 8930
+      traefik.http.services.gitlab.loadbalancer.server.port: 8929
       traefik.http.routers.gitlab-pages.tls: true
       traefik.http.routers.gitlab-pages.entrypoints: gitlab-pages
       traefik.http.routers.gitlab-pages.service: gitlab-pages
-      traefik.tcp.services.gitlab-ssh.loadbalancer.server.port: 22
-      traefik.tcp.routers.gitlab-ssh.rule: HostSNI(`*`)
+      traefik.http.services.gitlab-pages.loadbalancer.server.port: 8930
       traefik.tcp.routers.gitlab-ssh.entrypoints: gitlab-ssh
+      traefik.tcp.routers.gitlab-ssh.rule: HostSNI(`*`)
       traefik.tcp.routers.gitlab-ssh.service: gitlab-ssh
-      traefik.http.services.gitlab-registry.loadbalancer.server.port: 5050
+      traefik.tcp.services.gitlab-ssh.loadbalancer.server.port: 22
       traefik.http.routers.gitlab-registry.tls: true
       traefik.http.routers.gitlab-registry.entrypoints: gitlab-registry
       traefik.http.routers.gitlab-registry.service: gitlab-registry
-      traefik.http.services.gitlab-mattermost.loadbalancer.server.port: 3333
+      traefik.http.services.gitlab-registry.loadbalancer.server.port: 5050
       traefik.http.routers.gitlab-mattermost.tls: true
       traefik.http.routers.gitlab-mattermost.entrypoints: gitlab-mattermost
       traefik.http.routers.gitlab-mattermost.service: gitlab-mattermost
+      traefik.http.services.gitlab-mattermost.loadbalancer.server.port: 3333
     volumes:
       - 'gitlab-config:/etc/gitlab'
       - 'gitlab-logs:/var/log/gitlab'
@@ -343,10 +343,10 @@ services:
       PLANTUML_URI: https://${HOST_IP}:${PLANTUML_PORT}
     labels:
       traefik.enable: true
-      traefik.http.services.growi.loadbalancer.server.port: 3000
       traefik.http.routers.growi.tls: true
       traefik.http.routers.growi.entrypoints: growi
       traefik.http.routers.growi.service: growi
+      traefik.http.services.growi.loadbalancer.server.port: 3000
     restart: unless-stopped
     volumes:
       - growi-data:/data
@@ -399,10 +399,10 @@ services:
     image: plantuml/plantuml-server:jetty
     labels:
       traefik.enable: true
-      traefik.http.services.plantuml.loadbalancer.server.port: 8080
       traefik.http.routers.plantuml.tls: true
       traefik.http.routers.plantuml.entrypoints: plantuml
       traefik.http.routers.plantuml.service: plantuml
+      traefik.http.services.plantuml.loadbalancer.server.port: 8080
     networks:
       - private
 
@@ -410,10 +410,10 @@ services:
     image: lldap/lldap:stable
     labels:
       traefik.enable: true
-      traefik.http.services.lldap.loadbalancer.server.port: 17170
       traefik.http.routers.lldap.tls: true
       traefik.http.routers.lldap.entrypoints: lldap
       traefik.http.routers.lldap.service: lldap
+      traefik.http.services.lldap.loadbalancer.server.port: 17170
     volumes:
       - lldap-data:/data
     networks:
