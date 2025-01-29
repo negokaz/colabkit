@@ -1,4 +1,6 @@
-FROM ubuntu/squid:5.2-22.04_beta
+ARG UBUNTU_SQUID_VERSION
+
+FROM ubuntu/squid:${UBUNTU_SQUID_VERSION}
 
 COPY squid/squid.conf /etc/squid/squid.conf
 COPY squid/custom-entrypoint.sh /custom-entrypoint.sh
