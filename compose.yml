@@ -1,6 +1,21 @@
 name: 'colabkit'
 
+x-environment-http-proxy: &environment-http-proxy
+  HTTP_PROXY: http://squid:3128
+  http_proxy: http://squid:3128
+  HTTPS_PROXY: http://squid:3128
+  https_proxy: http://squid:3128
+  NO_PROXY: localhost
+  no_proxy: localhost
+
 services:
+
+  #############################################################################
+  # リバースプロキシ
+  # 各サービスを HTTPS で外部公開する。
+  #
+  # Registry URL: https://hub.docker.com/_/traefik
+  #############################################################################
   traefik:
     image: colabkit.localhost/traefik:latest
     build:
@@ -30,9 +45,9 @@ services:
       - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT}
     labels:
       traefik.enable: true
-      traefik.http.routers.traefik-dashboard.service: api@internal
-      traefik.http.routers.traefik-dashboard.entrypoints: traefik-dashboard
       traefik.http.routers.traefik-dashboard.tls: true
+      traefik.http.routers.traefik-dashboard.entrypoints: traefik-dashboard
+      traefik.http.routers.traefik-dashboard.service: api@internal
     depends_on:
       - tls-certs-generator
     ports:
@@ -55,6 +70,10 @@ services:
       - public
       - private
 
+  #############################################################################
+  # 証明書ジェネレーター
+  # TLS 証明書を生成する。
+  #############################################################################
   tls-certs-generator:
     image: colabkit.localhost/tls-certs-generator:latest
     build:
@@ -89,11 +108,21 @@ services:
     volumes:
       - 'tls-certs:/certs'
 
+  #############################################################################
+  # プロキシサーバー
+  # 各サービスからインターネットにアクセスするための HTTP/HTTPS プロキシを提供する。
+  #
+  # Registry URL: https://hub.docker.com/r/ubuntu/squid
+  #############################################################################
   squid:
     image: colabkit.localhost/squid:latest
     build:
       context: .
       dockerfile: squid/Dockerfile
+      args:
+        UBUNTU_SQUID_VERSION: 5.2-22.04_beta
+    # /dev/tty を有効化
+    # ログを /dev/tty に出力することで docker compose logs でログを確認できるようにする
     tty: true
     restart: always
     networks:
@@ -102,12 +131,21 @@ services:
     environment:
       HTTP_PROXY: ${HTTP_PROXY:-}
 
+  #############################################################################
+  # Colabkit ポータル
+  # Colabkit の利用ガイドを公開する。
+  #
+  # Registry URL: https://hub.docker.com/r/squidfunk/mkdocs-material
+  # Registry URL: https://hub.docker.com/_/nginx
+  #############################################################################
   portal:
     image: colabkit.localhost/portal:latest
     build:
       context: .
       dockerfile: portal/Dockerfile
       args:
+        MKDOCS_MATERIAL_VERSION: 9.5
+        NGINX_VERSION: 1.27
         HOST_IP: ${HOST_IP}
         PORTAL_HTTP_PORT: ${PORTAL_HTTP_PORT}
         PORTAL_HTTPS_PORT: ${PORTAL_HTTPS_PORT}
@@ -122,14 +160,14 @@ services:
         TRAEFIK_DASHBOARD_PORT: ${TRAEFIK_DASHBOARD_PORT}
     labels:
       traefik.enable: true
-      traefik.http.services.portal-http.loadbalancer.server.port: 80
       traefik.http.routers.portal-http.tls: false
       traefik.http.routers.portal-http.entrypoints: portal-http
       traefik.http.routers.portal-http.service: portal-http
-      traefik.http.services.portal-https.loadbalancer.server.port: 80
+      traefik.http.services.portal-http.loadbalancer.server.port: 80
       traefik.http.routers.portal-https.tls: true
       traefik.http.routers.portal-https.entrypoints: portal-https
       traefik.http.routers.portal-https.service: portal-https
+      traefik.http.services.portal-https.loadbalancer.server.port: 80
     depends_on:
       - tls-certs-generator
     volumes:
@@ -137,6 +175,13 @@ services:
     networks:
       - private
 
+  #############################################################################
+  # GitLab
+  # Git リポジトリをホストし、CI/CD 等の機能を提供する。
+  # バージョンアップ方法: https://docs.gitlab.com/ee/update/
+  #
+  # Registry URL: https://hub.docker.com/r/gitlab/gitlab-ce
+  #############################################################################
   gitlab:
     image: colabkit.localhost/gitlab:latest
     build:
@@ -146,12 +191,7 @@ services:
         GITLAB_VERSION: 17.6.1-ce.0
     restart: always
     environment:
-      HTTP_PROXY: http://squid:3128
-      http_proxy: http://squid:3128
-      HTTPS_PROXY: http://squid:3128
-      https_proxy: http://squid:3128
-      NO_PROXY: localhost
-      no_proxy: localhost
+      <<: *environment-http-proxy
       GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
       LDAP_BIND_USER_PASSWORD: ${LDAP_BIND_USER_PASSWORD}
       GITLAB_OMNIBUS_CONFIG: |
@@ -227,26 +267,26 @@ services:
         }
     labels:
       traefik.enable: true
-      traefik.http.services.gitlab.loadbalancer.server.port: 8929
       traefik.http.routers.gitlab.tls: true
       traefik.http.routers.gitlab.entrypoints: gitlab
       traefik.http.routers.gitlab.service: gitlab
-      traefik.http.services.gitlab-pages.loadbalancer.server.port: 8930
+      traefik.http.services.gitlab.loadbalancer.server.port: 8929
       traefik.http.routers.gitlab-pages.tls: true
       traefik.http.routers.gitlab-pages.entrypoints: gitlab-pages
       traefik.http.routers.gitlab-pages.service: gitlab-pages
-      traefik.tcp.services.gitlab-ssh.loadbalancer.server.port: 22
-      traefik.tcp.routers.gitlab-ssh.rule: HostSNI(`*`)
+      traefik.http.services.gitlab-pages.loadbalancer.server.port: 8930
       traefik.tcp.routers.gitlab-ssh.entrypoints: gitlab-ssh
+      traefik.tcp.routers.gitlab-ssh.rule: HostSNI(`*`)
       traefik.tcp.routers.gitlab-ssh.service: gitlab-ssh
-      traefik.http.services.gitlab-registry.loadbalancer.server.port: 5050
+      traefik.tcp.services.gitlab-ssh.loadbalancer.server.port: 22
       traefik.http.routers.gitlab-registry.tls: true
       traefik.http.routers.gitlab-registry.entrypoints: gitlab-registry
       traefik.http.routers.gitlab-registry.service: gitlab-registry
-      traefik.http.services.gitlab-mattermost.loadbalancer.server.port: 3333
+      traefik.http.services.gitlab-registry.loadbalancer.server.port: 5050
       traefik.http.routers.gitlab-mattermost.tls: true
       traefik.http.routers.gitlab-mattermost.entrypoints: gitlab-mattermost
       traefik.http.routers.gitlab-mattermost.service: gitlab-mattermost
+      traefik.http.services.gitlab-mattermost.loadbalancer.server.port: 3333
     volumes:
       - 'gitlab-config:/etc/gitlab'
       - 'gitlab-logs:/var/log/gitlab'
@@ -255,6 +295,12 @@ services:
       - private
     shm_size: '256m'
 
+  #############################################################################
+  # CI/CD ランナー
+  # GitLab の CI/CD ジョブを実行する。
+  #
+  # Registry URL: https://hub.docker.com/r/gitlab/gitlab-runner
+  #############################################################################
   gitlab-runner:
     image: colabkit.localhost/gitlab-runner:latest
     build:
@@ -268,6 +314,12 @@ services:
     networks:
       - private
 
+  #############################################################################
+  # コード品質管理サービス
+  # ソースコードを静的解析し、品質を検査する。
+  #
+  # Registry URL: https://hub.docker.com/_/sonarqube
+  #############################################################################
   sonarqube:
     image: colabkit.localhost/sonarqube:latest
     build:
@@ -314,6 +366,15 @@ services:
     networks:
       - private
 
+  #############################################################################
+  # Wiki サーバー
+  # リアルタイム共同編集が可能な Markdown ベースの Wiki サービスを提供する。
+  #
+  # 公式の docker compose ファイル:
+  # https://github.com/weseek/growi-docker-compose
+  #
+  # Registry URL: https://hub.docker.com/r/weseek/growi
+  #############################################################################
   growi:
     image: colabkit.localhost/growi:latest
     build:
@@ -327,12 +388,7 @@ services:
       growi-elasticsearch:
         condition: service_healthy
     environment:
-      HTTP_PROXY: http://squid:3128
-      http_proxy: http://squid:3128
-      HTTPS_PROXY: http://squid:3128
-      https_proxy: http://squid:3128
-      NO_PROXY: localhost
-      no_proxy: localhost
+      <<: *environment-http-proxy
       APP_SITE_URL: https://${HOST_IP}:${GROWI_PORT}
       MONGO_URI: mongodb://growi-mongodb:27017/growi
       ELASTICSEARCH_URI: http://growi-elasticsearch:9200/growi
@@ -343,16 +399,17 @@ services:
       PLANTUML_URI: https://${HOST_IP}:${PLANTUML_PORT}
     labels:
       traefik.enable: true
-      traefik.http.services.growi.loadbalancer.server.port: 3000
       traefik.http.routers.growi.tls: true
       traefik.http.routers.growi.entrypoints: growi
       traefik.http.routers.growi.service: growi
+      traefik.http.services.growi.loadbalancer.server.port: 3000
     restart: unless-stopped
     volumes:
       - growi-data:/data
     networks:
       - private
 
+  # Registry URL: https://hub.docker.com/_/mongo
   growi-mongodb:
     image: mongo:6.0
     restart: unless-stopped
@@ -368,6 +425,7 @@ services:
     networks:
       - private
 
+  # Registry URL: https://hub.docker.com/_/elasticsearch
   growi-elasticsearch:
     image: colabkit.localhost/elasticsearch:latest
     build:
@@ -395,25 +453,37 @@ services:
     networks:
       - private
 
+  #############################################################################
+  # PlantUML サーバー
+  # テキストから UML 図を生成する。
+  # 
+  # Registry URL: https://hub.docker.com/r/plantuml/plantuml-server
+  #############################################################################
   plantuml:
     image: plantuml/plantuml-server:jetty
     labels:
       traefik.enable: true
-      traefik.http.services.plantuml.loadbalancer.server.port: 8080
       traefik.http.routers.plantuml.tls: true
       traefik.http.routers.plantuml.entrypoints: plantuml
       traefik.http.routers.plantuml.service: plantuml
+      traefik.http.services.plantuml.loadbalancer.server.port: 8080
     networks:
       - private
 
+  #############################################################################
+  # LDAP サーバー
+  # 各種サービスにログインするためのユーザーを集中管理する。
+  #
+  # Registry URL: https://hub.docker.com/r/lldap/lldap
+  #############################################################################
   lldap:
     image: lldap/lldap:stable
     labels:
       traefik.enable: true
-      traefik.http.services.lldap.loadbalancer.server.port: 17170
       traefik.http.routers.lldap.tls: true
       traefik.http.routers.lldap.entrypoints: lldap
       traefik.http.routers.lldap.service: lldap
+      traefik.http.services.lldap.loadbalancer.server.port: 17170
     volumes:
       - lldap-data:/data
     networks:
