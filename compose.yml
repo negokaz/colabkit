@@ -39,6 +39,7 @@ services:
       - --entrypoints.gitlab-ssh.address=:${GITLAB_SSH_PORT}
       - --entrypoints.gitlab-registry.address=:${GITLAB_REGISTRY_PORT}
       - --entrypoints.sonarqube.address=:${SONARQUBE_PORT}
+      - --entrypoints.openproject.address=:${OPENPROJECT_PORT}
       - --entrypoints.growi.address=:${GROWI_PORT}
       - --entrypoints.plantuml.address=:${PLANTUML_PORT}
       - --entrypoints.lldap.address=:${LLDAP_WEB_PORT}
@@ -59,6 +60,7 @@ services:
       - ${HOST_IP}:${GITLAB_SSH_PORT}:${GITLAB_SSH_PORT}
       - ${HOST_IP}:${GITLAB_REGISTRY_PORT}:${GITLAB_REGISTRY_PORT}
       - ${HOST_IP}:${SONARQUBE_PORT}:${SONARQUBE_PORT}
+      - ${HOST_IP}:${OPENPROJECT_PORT}:${OPENPROJECT_PORT}
       - ${HOST_IP}:${GROWI_PORT}:${GROWI_PORT}
       - ${HOST_IP}:${PLANTUML_PORT}:${PLANTUML_PORT}
       - ${HOST_IP}:${LLDAP_WEB_PORT}:${LLDAP_WEB_PORT}
@@ -154,6 +156,7 @@ services:
         GITLAB_PAGES_PORT: ${GITLAB_PAGES_PORT}
         GITLAB_REGISTRY_PORT: ${GITLAB_REGISTRY_PORT}
         SONARQUBE_PORT: ${SONARQUBE_PORT}
+        OPENPROJECT_PORT: ${OPENPROJECT_PORT}
         GROWI_PORT: ${GROWI_PORT}
         PLANTUML_PORT: ${PLANTUML_PORT}
         LLDAP_WEB_PORT: ${LLDAP_WEB_PORT}
@@ -365,6 +368,125 @@ services:
       - sonarqube-postgresql:/var/lib/postgresql/data
     networks:
       - private
+  
+  #############################################################################
+  # OpenProject
+  # タスク管理を支援する。
+  #
+  # 公式の docker compose ファイル:
+  # https://github.com/opf/openproject-docker-compose/tree/stable/15
+  #
+  # Registry URL: https://hub.docker.com/r/openproject/openproject
+  #############################################################################
+  openproject:
+    image: colabkit.localhost/openproject:latest
+    build: &openproject-build
+      context: .
+      dockerfile: openproject/Dockerfile
+      args:
+        OPENPROJECT_VERSION: 15-slim
+    command: ["./docker/prod/web"]
+    # https://www.openproject.org/docs/installation-and-operations/configuration/environment/#supported-environment-variables
+    environment: &openproject-environment
+      <<: *environment-http-proxy
+      OPENPROJECT_HTTPS: true
+      OPENPROJECT_HOST__NAME: ${HOST_IP}:${OPENPROJECT_PORT}
+      OPENPROJECT_HSTS: true
+      OPENPROJECT_EE__MANAGER__VISIBLE: false
+      RAILS_CACHE_STORE: memcached
+      OPENPROJECT_CACHE__MEMCACHE__SERVER: openproject-memcached:11211
+      OPENPROJECT_RAILS__RELATIVE__URL__ROOT:
+      DATABASE_URL: postgresql://openproject:openproject@openproject-postgresql:5432/openproject?pool=20&encoding=unicode&reconnect=true
+      RAILS_MIN_THREADS: 4
+      RAILS_MAX_THREADS: 16
+      OPENPROJECT_SEED_LDAP_COLABKIT_HOST: lldap
+      OPENPROJECT_SEED_LDAP_COLABKIT_PORT: 3890
+      OPENPROJECT_SEED_LDAP_COLABKIT_SECURITY: plain_ldap
+      OPENPROJECT_SEED_LDAP_COLABKIT_TLS__VERIFY: false
+      OPENPROJECT_SEED_LDAP_COLABKIT_BINDUSER: uid=bind_user,ou=people,dc=example,dc=com
+      OPENPROJECT_SEED_LDAP_COLABKIT_BINDPASSWORD: ${LDAP_BIND_USER_PASSWORD}
+      OPENPROJECT_SEED_LDAP_COLABKIT_BASEDN: ou=people,dc=example,dc=com
+      OPENPROJECT_SEED_LDAP_COLABKIT_SYNC__USERS: true
+      OPENPROJECT_SEED_LDAP_COLABKIT_LOGIN__MAPPING: uid
+      OPENPROJECT_SEED_LDAP_COLABKIT_FIRSTNAME__MAPPING: givenName
+      OPENPROJECT_SEED_LDAP_COLABKIT_LASTNAME__MAPPING: sn
+      OPENPROJECT_SEED_LDAP_COLABKIT_MAIL__MAPPING: mail
+      # set to true to enable the email receiving feature. See ./docker/cron for more options
+      IMAP_ENABLED: false
+      OPENPROJECT_DEFAULT__LANGUAGE: ja
+      OPENPROJECT_USER__DEFAULT__TIMEZONE: Asia/Tokyo
+    labels:
+      traefik.enable: true
+      traefik.http.routers.openproject.tls: true
+      traefik.http.routers.openproject.entrypoints: openproject
+      traefik.http.routers.openproject.service: openproject
+      traefik.http.services.openproject.loadbalancer.server.port: 8080
+    restart: always
+    depends_on:
+      - openproject-postgresql
+      - openproject-memcached
+      - openproject-seeder
+    volumes:
+      - openproject-data:/var/openproject/assets
+    networks:
+      - private
+
+  openproject-seeder:
+    image: colabkit.localhost/openproject:latest
+    build:
+      <<: *openproject-build
+    command: ["./docker/prod/seeder"]
+    environment:
+      <<: *openproject-environment
+    restart: on-failure
+    networks:
+      - private
+
+  openproject-worker:
+    image: colabkit.localhost/openproject:latest
+    build:
+      <<: *openproject-build
+    command: ["./docker/prod/worker"]
+    environment:
+      <<: *openproject-environment
+    depends_on:
+      - openproject-postgresql
+      - openproject-memcached
+      - openproject-seeder
+    networks:
+      - private
+
+  openproject-cron:
+    image: colabkit.localhost/openproject:latest
+    build:
+      <<: *openproject-build
+    command: ["./docker/prod/cron"]
+    environment:
+      <<: *openproject-environment
+    depends_on:
+      - openproject-postgresql
+      - openproject-memcached
+      - openproject-seeder
+    networks:
+      - private
+  
+  openproject-postgresql:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_DB: openproject
+      POSTGRES_USER: openproject
+      POSTGRES_PASSWORD: openproject
+    volumes:
+      - openproject-postgresql:/var/lib/postgresql/data
+    networks:
+      - private
+
+  openproject-memcached:
+    image: memcached:1.6
+    restart: always
+    networks:
+      - private
 
   #############################################################################
   # Wiki サーバー
@@ -504,6 +626,8 @@ volumes:
   sonarqube-logs:
   sonarqube-extensions:
   sonarqube-postgresql:
+  openproject-data:
+  openproject-postgresql:
   growi-data:
   growi-mongo-configdb:
   growi-mongo-db:
