@@ -318,6 +318,23 @@ services:
       - private
 
   #############################################################################
+  # SMTP ゲートウェイサービス
+  # SMTP によるメール通知を Mattermost DM に転送する。
+  #
+  # Registry URL: https://hub.docker.com/r/gitlab/gitlab-runner
+  #############################################################################
+  smtp-mattermost-gateway:
+    image: colabkit.localhost/smtp-mattermost-gateway:latest
+    build:
+      context: .
+      dockerfile: smtp-mattermost-gateway/Dockerfile
+    restart: always
+    environment:
+      MATTERMOST_URL: http://gitlab:3333
+    networks:
+      - private
+
+  #############################################################################
   # コード品質管理サービス
   # ソースコードを静的解析し、品質を検査する。
   #
