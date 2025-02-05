@@ -41,6 +41,7 @@ services:
       - --entrypoints.sonarqube.address=:${SONARQUBE_PORT}
       - --entrypoints.openproject.address=:${OPENPROJECT_PORT}
       - --entrypoints.growi.address=:${GROWI_PORT}
+      - --entrypoints.drawio.address=:${DROWIO_PORT}
       - --entrypoints.plantuml.address=:${PLANTUML_PORT}
       - --entrypoints.lldap.address=:${LLDAP_WEB_PORT}
       - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT}
@@ -62,6 +63,7 @@ services:
       - ${HOST_IP}:${SONARQUBE_PORT}:${SONARQUBE_PORT}
       - ${HOST_IP}:${OPENPROJECT_PORT}:${OPENPROJECT_PORT}
       - ${HOST_IP}:${GROWI_PORT}:${GROWI_PORT}
+      - ${HOST_IP}:${DROWIO_PORT}:${DROWIO_PORT}
       - ${HOST_IP}:${PLANTUML_PORT}:${PLANTUML_PORT}
       - ${HOST_IP}:${LLDAP_WEB_PORT}:${LLDAP_WEB_PORT}
       - ${HOST_IP}:${TRAEFIK_DASHBOARD_PORT}:${TRAEFIK_DASHBOARD_PORT}
@@ -533,6 +535,7 @@ services:
       FILE_UPLOAD: mongodb
       MATHJAX: 1
       FORCE_WIKI_MODE: public
+      DRAWIO_URI: https://${HOST_IP}:${DROWIO_PORT}
       PLANTUML_URI: https://${HOST_IP}:${PLANTUML_PORT}
     labels:
       traefik.enable: true
@@ -604,6 +607,23 @@ services:
       traefik.http.routers.plantuml.entrypoints: plantuml
       traefik.http.routers.plantuml.service: plantuml
       traefik.http.services.plantuml.loadbalancer.server.port: 8080
+    networks:
+      - private
+
+  #############################################################################
+  # draw.io サーバー
+  # ブラウザ上で作図できるようにする。
+  # 
+  # Registry URL: https://hub.docker.com/r/jgraph/drawio
+  #############################################################################
+  drawio:
+    image: jgraph/drawio:26.0.9
+    labels:
+      traefik.enable: true
+      traefik.http.routers.drawio.tls: true
+      traefik.http.routers.drawio.entrypoints: drawio
+      traefik.http.routers.drawio.service: drawio
+      traefik.http.services.drawio.loadbalancer.server.port: 8080
     networks:
       - private
 
