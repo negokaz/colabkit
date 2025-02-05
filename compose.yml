@@ -17,7 +17,7 @@ services:
   # Registry URL: https://hub.docker.com/_/traefik
   #############################################################################
   traefik:
-    image: colabkit.localhost/traefik:latest
+    image: colabkit.traefik:latest
     build:
       context: .
       dockerfile: traefik/Dockerfile
@@ -79,7 +79,7 @@ services:
   # TLS 証明書を生成する。
   #############################################################################
   tls-certs-generator:
-    image: colabkit.localhost/tls-certs-generator:latest
+    image: colabkit.tls-certs-generator:latest
     build:
       context: .
       dockerfile: tls-certs-generator/Dockerfile
@@ -119,7 +119,7 @@ services:
   # Registry URL: https://hub.docker.com/r/ubuntu/squid
   #############################################################################
   squid:
-    image: colabkit.localhost/squid:latest
+    image: colabkit.squid:latest
     build:
       context: .
       dockerfile: squid/Dockerfile
@@ -143,7 +143,7 @@ services:
   # Registry URL: https://hub.docker.com/_/nginx
   #############################################################################
   portal:
-    image: colabkit.localhost/portal:latest
+    image: colabkit.portal:latest
     build:
       context: .
       dockerfile: portal/Dockerfile
@@ -188,7 +188,7 @@ services:
   # Registry URL: https://hub.docker.com/r/gitlab/gitlab-ce
   #############################################################################
   gitlab:
-    image: colabkit.localhost/gitlab:latest
+    image: colabkit.gitlab:latest
     build:
       context: .
       dockerfile: gitlab/Dockerfile
@@ -307,7 +307,7 @@ services:
   # Registry URL: https://hub.docker.com/r/gitlab/gitlab-runner
   #############################################################################
   gitlab-runner:
-    image: colabkit.localhost/gitlab-runner:latest
+    image: colabkit.gitlab-runner:latest
     build:
       context: .
       dockerfile: gitlab-runner/Dockerfile
@@ -324,7 +324,7 @@ services:
   # SMTP によるメール通知を Mattermost DM に配信する。
   #############################################################################
   smtp-mattermost-gateway:
-    image: colabkit.localhost/smtp-mattermost-gateway:latest
+    image: colabkit.smtp-mattermost-gateway:latest
     build:
       context: .
       dockerfile: smtp-mattermost-gateway/Dockerfile
@@ -341,7 +341,7 @@ services:
   # Registry URL: https://hub.docker.com/_/sonarqube
   #############################################################################
   sonarqube:
-    image: colabkit.localhost/sonarqube:latest
+    image: colabkit.sonarqube:latest
     build:
       context: .
       dockerfile: sonarqube/Dockerfile
@@ -396,7 +396,7 @@ services:
   # Registry URL: https://hub.docker.com/r/openproject/openproject
   #############################################################################
   openproject:
-    image: colabkit.localhost/openproject:latest
+    image: colabkit.openproject:latest
     build: &openproject-build
       context: .
       dockerfile: openproject/Dockerfile
@@ -449,7 +449,7 @@ services:
       - private
 
   openproject-seeder:
-    image: colabkit.localhost/openproject:latest
+    image: colabkit.openproject:latest
     build:
       <<: *openproject-build
     command: ["./docker/prod/seeder"]
@@ -460,7 +460,7 @@ services:
       - private
 
   openproject-worker:
-    image: colabkit.localhost/openproject:latest
+    image: colabkit.openproject:latest
     build:
       <<: *openproject-build
     command: ["./docker/prod/worker"]
@@ -474,7 +474,7 @@ services:
       - private
 
   openproject-cron:
-    image: colabkit.localhost/openproject:latest
+    image: colabkit.openproject:latest
     build:
       <<: *openproject-build
     command: ["./docker/prod/cron"]
@@ -515,7 +515,7 @@ services:
   # Registry URL: https://hub.docker.com/r/weseek/growi
   #############################################################################
   growi:
-    image: colabkit.localhost/growi:latest
+    image: colabkit.growi:latest
     build:
       context: .
       dockerfile: growi/Dockerfile
@@ -567,7 +567,7 @@ services:
 
   # Registry URL: https://hub.docker.com/_/elasticsearch
   growi-elasticsearch:
-    image: colabkit.localhost/elasticsearch:latest
+    image: colabkit.elasticsearch:latest
     build:
       context: .
       dockerfile: growi-elasticsearch/Dockerfile
