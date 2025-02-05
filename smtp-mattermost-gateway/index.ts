@@ -2,8 +2,12 @@ import { SMTPServer } from 'smtp-server';
 import * as mailparser from 'mailparser';
 import axios from 'axios';
 import { createCache } from 'cache-manager';
+import * as crypto from 'crypto';
 
-const mattermostUrl = process.env.MATTERMOST_URL;
+require('console-stamp')(console, { format: ':date(yyyy-mm-dd HH:MM:ss.l) :label(7)' });
+
+const PORT = 2525;
+const MATTERMOST_URL = process.env.MATTERMOST_URL;
 
 const mattermostBotUserCache = createCache({ ttl: 60 * 1000 /* ms */});
 
@@ -82,7 +86,7 @@ const server = new SMTPServer({
                             if (user) {
                                 return user;
                             } else {
-                                console.log(`User not found in cache for email: ${recipient}`);
+                                console.log(`User not found in cache for email [${recipient}]. Fetching users from Mattermost...`);
                                 return fetchMattermostUsers(sessionData).then(users =>
                                     mattermostUsersCache.mset<MattermostUser>(users.map(user => ({ key: user.email, value: user })))
                                 )
@@ -95,7 +99,7 @@ const server = new SMTPServer({
                         return;
                     }
 
-                    console.log(`Post direct message to Mattermost user: [${user.email}] ${title}`);
+                    console.log(`[DM] ${author} > ${user.email}: ${title}`);
 
                     await postMattermostDM(sessionData, author, me, user, title, message);
                 })());
@@ -110,19 +114,20 @@ const server = new SMTPServer({
     },
 });
 
-server.listen(2525, () => {
-  console.log('SMTP server is listening on port 2525');
-  console.log(`Mattermost URL: ${mattermostUrl}`);
+server.listen(PORT, () => {
+  console.log(`SMTP server is listening on port ${PORT}`);
+  console.log(`Mattermost URL: ${MATTERMOST_URL}`);
 });
 
 // https://api.mattermost.com/
 
 async function fetcCachedMattermostMe(session: SessionData): Promise<MattermostUser | void> {
-    return mattermostBotUserCache.wrap(session.password, () => fetcMattermostMe(session));
+    const key = crypto.createHash('sha256').update(session.password).digest('hex');
+    return mattermostBotUserCache.wrap(key, () => fetcMattermostMe(session));
 }
 
 async function fetcMattermostMe(session: SessionData): Promise<MattermostUser | void> {
-    return axios.get(`${mattermostUrl}/api/v4/users/me`, {
+    return axios.get(`${MATTERMOST_URL}/api/v4/users/me`, {
         headers: {
             Authorization: `Bearer ${session.password}`
         },
@@ -138,7 +143,7 @@ async function fetcMattermostMe(session: SessionData): Promise<MattermostUser | 
 
 async function fetchMattermostUsers(session: SessionData, page: number = 0): Promise<MattermostUser[]> {
     const per_page = 50;
-    return axios.get(`${mattermostUrl}/api/v4/users?page=${page}&per_page=${per_page}`, {
+    return axios.get(`${MATTERMOST_URL}/api/v4/users?page=${page}&per_page=${per_page}`, {
         headers: {
             Authorization: `Bearer ${session.password}`
         }
@@ -162,13 +167,13 @@ async function fetchMattermostUsers(session: SessionData, page: number = 0): Pro
 }
 
 async function postMattermostDM(session: SessionData, author: string, from: MattermostUser, to: MattermostUser, title: string, message: string): Promise<void> {
-    const channel = await axios.post(`${mattermostUrl}/api/v4/channels/direct`, [ from.user_id, to.user_id], {
+    const channel = await axios.post(`${MATTERMOST_URL}/api/v4/channels/direct`, [ from.user_id, to.user_id], {
                 headers: {
                     Authorization: `Bearer ${session.password}`
                 }
             }
         );
-    await axios.post(`${mattermostUrl}/api/v4/posts`, {
+    await axios.post(`${MATTERMOST_URL}/api/v4/posts`, {
             channel_id: channel.data.id,
             props: {
                 attachments: [{

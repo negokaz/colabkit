@@ -10,10 +10,12 @@ Colabkit（コラボキット）はチームで効率よくソフトウェアを
 ## Colabkit で構築できる主なサービス
 
 - GitLab (Community Edition)
-    - プロジェクト管理、コードレビュー、CI/CD などの機能を提供する Git リポジトリマネージャ
+    - コードレビュー、CI/CD などの機能を提供する Git リポジトリマネージャ
     - CI/CD、Pages、Registry が使えます
 - Mattermost
     - チャットサービス
+- OpenProject
+    - プロジェクト管理サービス
 - Growi
     - 共同編集可能なナレッジ共有サービス
 - SonarQube (Community Edition)

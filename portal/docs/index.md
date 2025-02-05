@@ -5,9 +5,11 @@ Colabkit（コラボキット）はチームでソフトウェアを効率よく
 初めて利用する方は [ユーザーガイド](ユーザーガイド.md) に従って設定してください。
 
 - [GitLab](https://{{HOST_IP}}:{{GITLAB_PORT}}/)
-    - プロジェクト管理、コードレビュー、CI/CD などの機能を提供する Git リポジトリマネージャ
+    - コードレビュー、CI/CD などの機能を提供する Git リポジトリマネージャ
 - [Mattermost](https://{{HOST_IP}}:{{GITLAB_MATTERMOST_PORT}}/)
     - チャットサービス
+- [OpenProject](https://{{HOST_IP}}:{{OPENPROJECT_PORT}}/)
+    - プロジェクト管理サービス
 - [Growi](https://{{HOST_IP}}:{{GROWI_PORT}}/)
     - 共同編集可能なナレッジ共有サービス
 - [SonarQube](https://{{HOST_IP}}:{{SONARQUBE_PORT}}/)
