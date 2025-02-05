@@ -319,9 +319,7 @@ services:
 
   #############################################################################
   # SMTP ゲートウェイサービス
-  # SMTP によるメール通知を Mattermost DM に転送する。
-  #
-  # Registry URL: https://hub.docker.com/r/gitlab/gitlab-runner
+  # SMTP によるメール通知を Mattermost DM に配信する。
   #############################################################################
   smtp-mattermost-gateway:
     image: colabkit.localhost/smtp-mattermost-gateway:latest

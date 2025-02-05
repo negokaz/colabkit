@@ -1,7 +1,7 @@
 {
-  "name": "docker-compose-gitlab",
+  "name": "smtp-mattermost-gateway",
   "version": "1.0.0",
-  "description": "Colabkit（コラボキット）はチームで効率よくソフトウェアを開発するのに役立つサービスをセルフホストサーバーに素早く構築します。",
+  "description": "メール通知を Mattermost の DM に配信します",
   "main": "index.js",
   "directories": {
     "test": "test"
