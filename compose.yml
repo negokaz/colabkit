@@ -8,6 +8,12 @@ x-environment-http-proxy: &environment-http-proxy
   NO_PROXY: localhost
   no_proxy: localhost
 
+x-logging: &logging
+  driver: 'json-file'
+  options:
+    max-size: '10m'
+    max-file: '10'
+
 services:
 
   #############################################################################
@@ -73,6 +79,7 @@ services:
     networks:
       - public
       - private
+    logging: *logging
 
   #############################################################################
   # 証明書ジェネレーター
@@ -111,6 +118,7 @@ services:
       start_period: 10s
     volumes:
       - 'tls-certs:/certs'
+    logging: *logging
 
   #############################################################################
   # プロキシサーバー
@@ -134,6 +142,7 @@ services:
       - private
     environment:
       HTTP_PROXY: ${HTTP_PROXY:-}
+    logging: *logging
 
   #############################################################################
   # Colabkit ポータル
@@ -179,6 +188,7 @@ services:
       - 'tls-certs:/tls-certs'
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # GitLab
@@ -299,6 +309,7 @@ services:
     networks:
       - private
     shm_size: '256m'
+    logging: *logging
 
   #############################################################################
   # CI/CD ランナー
@@ -318,6 +329,7 @@ services:
       - 'tls-certs:/tls-certs'
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # SMTP ゲートウェイサービス
@@ -333,6 +345,7 @@ services:
       MATTERMOST_URL: http://gitlab:3333
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # コード品質管理サービス
@@ -373,6 +386,7 @@ services:
       - sonarqube-extensions:/opt/sonarqube/extensions
     networks:
       - private
+    logging: *logging
 
   sonarqube-postgresql:
     image: postgres:17.2
@@ -385,6 +399,7 @@ services:
       - sonarqube-postgresql:/var/lib/postgresql/data
     networks:
       - private
+    logging: *logging
   
   #############################################################################
   # OpenProject
@@ -447,6 +462,7 @@ services:
       - openproject-data:/var/openproject/assets
     networks:
       - private
+    logging: *logging
 
   openproject-seeder:
     image: colabkit.openproject:latest
@@ -458,6 +474,7 @@ services:
     restart: on-failure
     networks:
       - private
+    logging: *logging
 
   openproject-worker:
     image: colabkit.openproject:latest
@@ -472,6 +489,7 @@ services:
       - openproject-seeder
     networks:
       - private
+    logging: *logging
 
   openproject-cron:
     image: colabkit.openproject:latest
@@ -486,6 +504,7 @@ services:
       - openproject-seeder
     networks:
       - private
+    logging: *logging
   
   openproject-postgresql:
     image: postgres:13
@@ -498,12 +517,14 @@ services:
       - openproject-postgresql:/var/lib/postgresql/data
     networks:
       - private
+    logging: *logging
 
   openproject-memcached:
     image: memcached:1.6
     restart: always
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # Wiki サーバー
@@ -548,6 +569,7 @@ services:
       - growi-data:/data
     networks:
       - private
+    logging: *logging
 
   # Registry URL: https://hub.docker.com/_/mongo
   growi-mongodb:
@@ -564,6 +586,7 @@ services:
       - growi-mongo-db:/data/db
     networks:
       - private
+    logging: *logging
 
   # Registry URL: https://hub.docker.com/_/elasticsearch
   growi-elasticsearch:
@@ -592,6 +615,7 @@ services:
       - growi-es-data:/usr/share/elasticsearch/data
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # PlantUML サーバー
@@ -609,6 +633,7 @@ services:
       traefik.http.services.plantuml.loadbalancer.server.port: 8080
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # draw.io サーバー
@@ -626,6 +651,7 @@ services:
       traefik.http.services.drawio.loadbalancer.server.port: 8080
     networks:
       - private
+    logging: *logging
 
   #############################################################################
   # LDAP サーバー
@@ -650,6 +676,7 @@ services:
       LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
       LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
       LLDAP_LDAP_BASE_DN: dc=colabkit,dc=internal
+    logging: *logging
 
 volumes:
   tls-certs:
