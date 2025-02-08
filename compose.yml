@@ -255,8 +255,8 @@ services:
             'active_directory' => false,
             'timeout' => 10,
             'uid' => 'uid',
-            'base' => 'ou=people,dc=example,dc=com',
-            'bind_dn' => 'uid=bind_user,ou=people,dc=example,dc=com',
+            'base' => 'ou=people,dc=colabkit,dc=internal',
+            'bind_dn' => 'uid=bind_user,ou=people,dc=colabkit,dc=internal',
             'password' => ENV['LDAP_BIND_USER_PASSWORD'],
             'attributes' => {
               'username' => 'uid',
@@ -420,9 +420,9 @@ services:
       OPENPROJECT_SEED_LDAP_COLABKIT_PORT: 3890
       OPENPROJECT_SEED_LDAP_COLABKIT_SECURITY: plain_ldap
       OPENPROJECT_SEED_LDAP_COLABKIT_TLS__VERIFY: false
-      OPENPROJECT_SEED_LDAP_COLABKIT_BINDUSER: uid=bind_user,ou=people,dc=example,dc=com
+      OPENPROJECT_SEED_LDAP_COLABKIT_BINDUSER: uid=bind_user,ou=people,dc=colabkit,dc=internal
       OPENPROJECT_SEED_LDAP_COLABKIT_BINDPASSWORD: ${LDAP_BIND_USER_PASSWORD}
-      OPENPROJECT_SEED_LDAP_COLABKIT_BASEDN: ou=people,dc=example,dc=com
+      OPENPROJECT_SEED_LDAP_COLABKIT_BASEDN: ou=people,dc=colabkit,dc=internal
       OPENPROJECT_SEED_LDAP_COLABKIT_SYNC__USERS: true
       OPENPROJECT_SEED_LDAP_COLABKIT_LOGIN__MAPPING: uid
       OPENPROJECT_SEED_LDAP_COLABKIT_FIRSTNAME__MAPPING: givenName
@@ -649,7 +649,7 @@ services:
       LLDAP_LDAP_USER_PASS: ${LDAP_ADMIN_PASSWORD}
       LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
       LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
-      LLDAP_LDAP_BASE_DN: dc=example,dc=com
+      LLDAP_LDAP_BASE_DN: dc=colabkit,dc=internal
 
 volumes:
   tls-certs:
