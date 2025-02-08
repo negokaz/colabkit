@@ -36,21 +36,21 @@ services:
       - --providers.file.directory=/etc/traefik/dynamic
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
-      - --providers.docker.defaultRule=Host(`${HOST_IP}`)
-      - --entrypoints.portal-http.address=:${PORTAL_HTTP_PORT}
-      - --entrypoints.portal-https.address=:${PORTAL_HTTPS_PORT}
-      - --entrypoints.gitlab.address=:${GITLAB_PORT}
-      - --entrypoints.gitlab-mattermost.address=:${GITLAB_MATTERMOST_PORT}
-      - --entrypoints.gitlab-pages.address=:${GITLAB_PAGES_PORT}
-      - --entrypoints.gitlab-ssh.address=:${GITLAB_SSH_PORT}
-      - --entrypoints.gitlab-registry.address=:${GITLAB_REGISTRY_PORT}
-      - --entrypoints.sonarqube.address=:${SONARQUBE_PORT}
-      - --entrypoints.openproject.address=:${OPENPROJECT_PORT}
-      - --entrypoints.growi.address=:${GROWI_PORT}
-      - --entrypoints.drawio.address=:${DROWIO_PORT}
-      - --entrypoints.plantuml.address=:${PLANTUML_PORT}
-      - --entrypoints.lldap.address=:${LLDAP_WEB_PORT}
-      - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT}
+      - --providers.docker.defaultRule=Host(`${HOST_IP:?}`)
+      - --entrypoints.portal-http.address=:${PORTAL_HTTP_PORT:?}
+      - --entrypoints.portal-https.address=:${PORTAL_HTTPS_PORT:?}
+      - --entrypoints.gitlab.address=:${GITLAB_PORT:?}
+      - --entrypoints.gitlab-mattermost.address=:${GITLAB_MATTERMOST_PORT:?}
+      - --entrypoints.gitlab-pages.address=:${GITLAB_PAGES_PORT:?}
+      - --entrypoints.gitlab-ssh.address=:${GITLAB_SSH_PORT:?}
+      - --entrypoints.gitlab-registry.address=:${GITLAB_REGISTRY_PORT:?}
+      - --entrypoints.sonarqube.address=:${SONARQUBE_PORT:?}
+      - --entrypoints.openproject.address=:${OPENPROJECT_PORT:?}
+      - --entrypoints.growi.address=:${GROWI_PORT:?}
+      - --entrypoints.drawio.address=:${DROWIO_PORT:?}
+      - --entrypoints.plantuml.address=:${PLANTUML_PORT:?}
+      - --entrypoints.lldap.address=:${LLDAP_WEB_PORT:?}
+      - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT:?}
     labels:
       traefik.enable: true
       traefik.http.routers.traefik-dashboard.tls: true
@@ -207,8 +207,8 @@ services:
     restart: always
     environment:
       <<: *environment-http-proxy
-      GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD}
-      LDAP_BIND_USER_PASSWORD: ${LDAP_BIND_USER_PASSWORD}
+      GITLAB_ROOT_PASSWORD: ${GITLAB_ROOT_PASSWORD:?}
+      LDAP_BIND_USER_PASSWORD: ${LDAP_BIND_USER_PASSWORD:?}
       GITLAB_OMNIBUS_CONFIG: |
         # https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/files/gitlab-config-template/gitlab.rb.template
 
@@ -436,7 +436,7 @@ services:
       OPENPROJECT_SEED_LDAP_COLABKIT_SECURITY: plain_ldap
       OPENPROJECT_SEED_LDAP_COLABKIT_TLS__VERIFY: false
       OPENPROJECT_SEED_LDAP_COLABKIT_BINDUSER: uid=bind_user,ou=people,dc=colabkit,dc=internal
-      OPENPROJECT_SEED_LDAP_COLABKIT_BINDPASSWORD: ${LDAP_BIND_USER_PASSWORD}
+      OPENPROJECT_SEED_LDAP_COLABKIT_BINDPASSWORD: ${LDAP_BIND_USER_PASSWORD:?}
       OPENPROJECT_SEED_LDAP_COLABKIT_BASEDN: ou=people,dc=colabkit,dc=internal
       OPENPROJECT_SEED_LDAP_COLABKIT_SYNC__USERS: true
       OPENPROJECT_SEED_LDAP_COLABKIT_LOGIN__MAPPING: uid
@@ -672,7 +672,7 @@ services:
     networks:
       - private
     environment:
-      LLDAP_LDAP_USER_PASS: ${LDAP_ADMIN_PASSWORD}
+      LLDAP_LDAP_USER_PASS: ${LDAP_ADMIN_PASSWORD:?}
       LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
       LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
       LLDAP_LDAP_BASE_DN: dc=colabkit,dc=internal
