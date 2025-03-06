@@ -1,5 +1,10 @@
 #!/bin/bash
 
+{
+    echo "acl external_address dstdomain ${HOST_IP}"
+    echo "always_direct allow external_address"
+} >> /etc/squid/squid.conf
+
 if [[ ! -z "${HTTP_PROXY}" ]]; then
     # Extract host and port from HTTP_PROXY
     if [[ "${HTTP_PROXY}" =~ ^http://([^:/]+)(:([0-9]+))?/?.*$ ]]; then

@@ -141,6 +141,7 @@ services:
       - public
       - private
     environment:
+      HOST_IP: ${HOST_IP}
       HTTP_PROXY: ${HTTP_PROXY:-}
     logging: *logging
 
