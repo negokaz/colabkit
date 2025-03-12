@@ -51,6 +51,7 @@ services:
       - --entrypoints.plantuml.address=:${PLANTUML_PORT:?}
       - --entrypoints.lldap.address=:${LLDAP_WEB_PORT:?}
       - --entrypoints.traefik-dashboard.address=:${TRAEFIK_DASHBOARD_PORT:?}
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.traefik-dashboard.tls: true
@@ -90,6 +91,7 @@ services:
     build:
       context: .
       dockerfile: tls-certs-generator/Dockerfile
+    restart: always
     environment:
       RCA_SUBJECT: colabkit-rca
       RCA_EXPIRE: 39500
@@ -173,6 +175,7 @@ services:
         PLANTUML_PORT: ${PLANTUML_PORT}
         LLDAP_WEB_PORT: ${LLDAP_WEB_PORT}
         TRAEFIK_DASHBOARD_PORT: ${TRAEFIK_DASHBOARD_PORT}
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.portal-http.tls: false
@@ -482,6 +485,7 @@ services:
     build:
       <<: *openproject-build
     command: ["./docker/prod/worker"]
+    restart: always
     environment:
       <<: *openproject-environment
     depends_on:
@@ -497,6 +501,7 @@ services:
     build:
       <<: *openproject-build
     command: ["./docker/prod/cron"]
+    restart: always
     environment:
       <<: *openproject-environment
     depends_on:
@@ -626,6 +631,7 @@ services:
   #############################################################################
   plantuml:
     image: plantuml/plantuml-server:jetty
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.plantuml.tls: true
@@ -644,6 +650,7 @@ services:
   #############################################################################
   drawio:
     image: jgraph/drawio:26.0.9
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.drawio.tls: true
@@ -662,6 +669,7 @@ services:
   #############################################################################
   lldap:
     image: lldap/lldap:stable
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.lldap.tls: true
