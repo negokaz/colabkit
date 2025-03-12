@@ -1,6 +1,7 @@
 #!/bin/bash
 
 {
+    cat /etc/squid/squid.base.conf
     echo "acl external_address dstdomain ${HOST_IP}"
     echo "always_direct allow external_address"
 } >> /etc/squid/squid.conf
