@@ -1,6 +1,6 @@
 ARG ELASTICSEARCH_VERSION
 
-FROM docker.elastic.co/elasticsearch/elasticsearch:${ELASTICSEARCH_VERSION}
+FROM elasticsearch:${ELASTICSEARCH_VERSION}
 
 RUN bin/elasticsearch-plugin install analysis-kuromoji
 RUN bin/elasticsearch-plugin install analysis-icu
