@@ -4,7 +4,7 @@
     cat /etc/squid/squid.base.conf
     echo "acl external_address dstdomain ${HOST_IP}"
     echo "always_direct allow external_address"
-} >> /etc/squid/squid.conf
+} > /etc/squid/squid.conf
 
 if [[ ! -z "${HTTP_PROXY}" ]]; then
     # Extract host and port from HTTP_PROXY
