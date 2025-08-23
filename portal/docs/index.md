@@ -14,6 +14,8 @@ Colabkit（コラボキット）はチームでソフトウェアを効率よく
     - 共同編集可能なナレッジ共有サービス
 - [SonarQube](https://{{HOST_IP}}:{{SONARQUBE_PORT}}/)
     - コード品質管理サービス
+- [Nexus](https://{{HOST_IP}}:{{NEXUS_PORT}}/)
+    - リポジトリマネージャサービス
 
 ## 管理者向けサービス
 
