@@ -42,6 +42,7 @@ services:
       - --entrypoints.gitlab-pages.address=:${GITLAB_PAGES_PORT:?}
       - --entrypoints.gitlab-ssh.address=:${GITLAB_SSH_PORT:?}
       - --entrypoints.gitlab-registry.address=:${GITLAB_REGISTRY_PORT:?}
+      - --entrypoints.gitlab-registry.transport.respondingTimeouts.readTimeout=3m
       - --entrypoints.sonarqube.address=:${SONARQUBE_PORT:?}
       - --entrypoints.openproject.address=:${OPENPROJECT_PORT:?}
       - --entrypoints.growi.address=:${GROWI_PORT:?}
