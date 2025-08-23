@@ -1,4 +1,4 @@
-ARG GITLAB_VERSION
+ARG GITLAB_VERSION=17.6.1-ce.0
 
 FROM gitlab/gitlab-ce:${GITLAB_VERSION} as certs
 RUN set -ex; \

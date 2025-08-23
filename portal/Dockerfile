@@ -1,7 +1,4 @@
-ARG MKDOCS_MATERIAL_VERSION
-ARG NGINX_VERSION
-
-FROM squidfunk/mkdocs-material:${MKDOCS_MATERIAL_VERSION} AS mkdocs
+FROM squidfunk/mkdocs-material:9.5 AS mkdocs
 
 ARG HOST_IP \
     PORTAL_HTTP_PORT \
@@ -25,7 +22,7 @@ RUN pip install mkdocs-macros-plugin
 RUN mkdocs build
 
 
-FROM nginx:${NGINX_VERSION}
+FROM nginx:1.27
 
 COPY portal/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=mkdocs /docs/site /usr/share/nginx/html

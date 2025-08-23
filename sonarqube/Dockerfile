@@ -1,6 +1,6 @@
-ARG SONARQUBE_VERSION
+ARG SONARQUBE_VERSION=9.9.8-community
 
-FROM sonarqube:${SONARQUBE_VERSION} as build
+FROM sonarqube:${SONARQUBE_VERSION} AS build
 
 USER root
 RUN set -ex; \

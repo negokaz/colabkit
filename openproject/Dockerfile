@@ -1,4 +1,4 @@
-ARG OPENPROJECT_VERSION
+ARG OPENPROJECT_VERSION=15-slim
 
 FROM openproject/openproject:${OPENPROJECT_VERSION} as certs
 
