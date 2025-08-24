@@ -16,6 +16,7 @@ ARG HOST_IP \
     TRAEFIK_DASHBOARD_PORT
 
 COPY portal/mkdocs.yml /docs/mkdocs.yml
+COPY portal/mkdocs-module.py /docs/mkdocs-module.py
 COPY portal/docs /docs/docs
 
 RUN pip install mkdocs-macros-plugin
