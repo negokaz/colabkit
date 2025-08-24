@@ -20,6 +20,8 @@ Colabkit（コラボキット）はチームで効率よくソフトウェアを
     - 共同編集可能なナレッジ共有サービス
 - SonarQube (Community Edition)
     - コード品質管理サービス
+- Sonatype Nexus Repository (Community Edition)
+    - リポジトリマネージャサービス
 
 ## セットアップ方法
 

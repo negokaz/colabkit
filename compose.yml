@@ -46,6 +46,7 @@ services:
       - --entrypoints.sonarqube.address=:${SONARQUBE_PORT:?}
       - --entrypoints.openproject.address=:${OPENPROJECT_PORT:?}
       - --entrypoints.growi.address=:${GROWI_PORT:?}
+      - --entrypoints.nexus.address=:${NEXUS_PORT:?}
       - --entrypoints.drawio.address=:${DROWIO_PORT:?}
       - --entrypoints.plantuml.address=:${PLANTUML_PORT:?}
       - --entrypoints.lldap.address=:${LLDAP_WEB_PORT:?}
@@ -69,6 +70,7 @@ services:
       - ${HOST_IP}:${SONARQUBE_PORT}:${SONARQUBE_PORT}
       - ${HOST_IP}:${OPENPROJECT_PORT}:${OPENPROJECT_PORT}
       - ${HOST_IP}:${GROWI_PORT}:${GROWI_PORT}
+      - ${HOST_IP}:${NEXUS_PORT}:${NEXUS_PORT}
       - ${HOST_IP}:${DROWIO_PORT}:${DROWIO_PORT}
       - ${HOST_IP}:${PLANTUML_PORT}:${PLANTUML_PORT}
       - ${HOST_IP}:${LLDAP_WEB_PORT}:${LLDAP_WEB_PORT}
@@ -167,6 +169,7 @@ services:
         SONARQUBE_PORT: ${SONARQUBE_PORT}
         OPENPROJECT_PORT: ${OPENPROJECT_PORT}
         GROWI_PORT: ${GROWI_PORT}
+        NEXUS_PORT: ${NEXUS_PORT}
         PLANTUML_PORT: ${PLANTUML_PORT}
         LLDAP_WEB_PORT: ${LLDAP_WEB_PORT}
         TRAEFIK_DASHBOARD_PORT: ${TRAEFIK_DASHBOARD_PORT}
@@ -609,6 +612,36 @@ services:
     logging: *logging
 
   #############################################################################
+  # Sonatype Nexus Repository サーバー
+  # 汎用リポジトリマネージャーを提供する。
+  # 
+  # Registry URL: https://hub.docker.com/r/sonatype/nexus3/
+  #############################################################################
+  nexus:
+    image: colabkit.nexus:latest
+    build:
+      context: .
+      dockerfile: nexus/Dockerfile
+    labels:
+      traefik.enable: true
+      traefik.http.routers.nexus.tls: true
+      traefik.http.routers.nexus.entrypoints: nexus
+      traefik.http.routers.nexus.service: nexus
+      traefik.http.services.nexus.loadbalancer.server.port: 8081
+    restart: always
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/127.0.0.1/8081"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - nexus-data:/nexus-data
+    networks:
+      - private
+    logging: *logging
+
+  #############################################################################
   # PlantUML サーバー
   # テキストから UML 図を生成する。
   # 
@@ -688,6 +721,7 @@ volumes:
   growi-mongo-configdb:
   growi-mongo-db:
   growi-es-data:
+  nexus-data:
   lldap-data:
 
 networks:
