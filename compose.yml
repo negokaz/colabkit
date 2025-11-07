@@ -230,7 +230,11 @@ services:
         gitlab_pages['access_control'] = true
         gitlab_pages['artifacts_server'] = true
         gitlab_pages['internal_gitlab_server'] = 'http://gitlab:8929'
-
+        gitlab_pages['env'] = {
+          'http_proxy' => ENV['http_proxy'],
+          'https_proxy' => ENV['https_proxy'],
+          'no_proxy' => ENV['no_proxy']
+        }
         # GitLab Container Registry
         registry_external_url 'https://${HOST_IP}:${GITLAB_REGISTRY_PORT}'
         registry_nginx['listen_port'] = 5050
